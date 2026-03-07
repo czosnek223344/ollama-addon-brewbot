@@ -1,5 +1,5 @@
 ===========================================================================
-this is addon for https://github.com/Eglijohn/brew-addon. 
+this is addon for https://github.com/Eglijohn/brew-bot-public. 
                     to use edit config.js!!!!!!!!!!!!!!!!!!!!!!!!
                     you can talk with ai in /msg
                     install ollama!!!!!!!!!
