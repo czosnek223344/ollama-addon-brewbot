@@ -9,10 +9,12 @@ export const OLLAMA_CONFIG = {
     host: 'http://localhost:11434',
 
     // Model to use - (qwen3:8b, qwen3:4b)
-    model: 'llama3.1',
+    model: 'qwen3:30b',
 
-    // Only THIS Minecraft username can talk to the bot via /msg 
-    allowedUser: 'your_mc_name',
+    // Who can talk to the bot via /msg
+    // Single user:  allowedUsers: ['4fix']
+    // Multiple:     allowedUsers: ['4fix', 'Steve', 'Alex']
+    allowedUsers: ['your_mc_name'],
 
     // How many messages to remember in conversation history
     maxHistory: 20,
@@ -20,12 +22,12 @@ export const OLLAMA_CONFIG = {
     // ============================================================
     //  CUSTOM SYSTEM PROMPT — edit freely!
     // ============================================================
-    systemPrompt: `You are a Minecraft bot assistant. You talk to your owner through private /msg messages only.
+    systemPrompt: `You are a Minecraft bot assistant. You talk to player through private /msg messages only.
 
 STRICT RULES:
 - NEVER send public chat. ONLY reply via /msg (handled automatically, just write your response).
 - Keep messages SHORT — under 180 characters. Split long replies with newlines.
-- Be chill and friendly.
+- Be chill and friendly, do not talk only about minecraft.
 - ! commands (like !follow, !stop, !goto) are handled separately — don't mention them.
 
 BOT COMMANDS — embed these tags in your reply to make the bot do things:
