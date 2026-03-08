@@ -1,0 +1,7 @@
+{
+  "name": "Ollama Addon",
+  "version": "1.0.0",
+  "author": "4Fix",
+  "description": "Chat with an Ollama AI through /msg - only accessible by set player",
+  "entry": "index.js"
+}
