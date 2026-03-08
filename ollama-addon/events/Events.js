@@ -21,70 +21,68 @@ function splitMessage(text, maxLen = 200) {
     return chunks.filter(c => c.length > 0);
 }
 
-/**
- * @param {Object} i - Bot wrapper
- *   i.bot        = mineflayer bot
- *   i.logger     = Logger
- *   i.fly        = fly toggle (boolean)
- *   i.followTarget.target = fly-follow target
- */
 export default function initOllamaEvents(i) {
-    const conversationHistory = [];
+    // Per-user conversation history — each allowed user gets their own context
+    const histories = new Map();
 
-    const whisperBack = (message) => {
+    // Support both single string (legacy) and array
+    const allowedUsers = Array.isArray(OLLAMA_CONFIG.allowedUsers)
+        ? OLLAMA_CONFIG.allowedUsers
+        : [OLLAMA_CONFIG.allowedUsers];
+
+    const whisperBack = (username, message) => {
         const chunks = splitMessage(String(message));
         for (const chunk of chunks) {
             if (chunk.length > 0) {
-                // ONLY /msg — never public chat
-                i.bot.chat(`/msg ${OLLAMA_CONFIG.allowedUser} ${chunk}`);
+                i.bot.chat(`/msg ${username} ${chunk}`);
             }
         }
     };
 
     i.bot.on('whisper', async (username, message) => {
-        // Only allowed user
-        if (username !== OLLAMA_CONFIG.allowedUser) return;
-
-        // Skip empty
+        if (!allowedUsers.includes(username)) return;
         if (!message || message.trim().length === 0) return;
-
-        // Skip !commands — bot's own handler deals with those
         if (message.trim().startsWith('!')) return;
 
         i.logger.info(`[OllamaAddon] ${username}: ${message}`);
 
+        // Get or create this user's personal history
+        if (!histories.has(username)) {
+            histories.set(username, []);
+        }
+        const history = histories.get(username);
+
         try {
-            const rawResponse = await askOllama(conversationHistory, message);
+            const rawResponse = await askOllama(history, message);
             const { cleanText, commands } = parseCommands(rawResponse);
 
-            conversationHistory.push({ role: 'user', content: message });
-            conversationHistory.push({ role: 'assistant', content: rawResponse });
+            history.push({ role: 'user', content: message });
+            history.push({ role: 'assistant', content: cleanText || rawResponse });
 
-            // Keep history within limit
-            while (conversationHistory.length > OLLAMA_CONFIG.maxHistory * 2) {
-                conversationHistory.splice(0, 2);
+            // Trim history to limit
+            while (history.length > OLLAMA_CONFIG.maxHistory * 2) {
+                history.splice(0, 2);
             }
 
-            // Execute any bot commands the AI embedded
             for (const { cmd, arg } of commands) {
                 i.logger.info(`[OllamaAddon] Executing: ${cmd}${arg ? ':' + arg : ''}`);
-                await executeCommand(i, username, cmd, arg, whisperBack);
+                await executeCommand(i, username, cmd, arg, (msg) => whisperBack(username, msg));
             }
 
             if (cleanText.length > 0) {
-                whisperBack(cleanText);
+                whisperBack(username, cleanText);
             }
 
         } catch (err) {
             i.logger.error(`[OllamaAddon] Error: ${err.message}`);
 
             if (err.message.includes('ECONNREFUSED') || err.message.includes('fetch')) {
-                whisperBack(`Ollama not responding — is it running at ${OLLAMA_CONFIG.host}?`);
+                whisperBack(username, `Ollama not responding — is it running at ${OLLAMA_CONFIG.host}?`);
             } else {
-                whisperBack(`Error: ${err.message.slice(0, 100)}`);
+                whisperBack(username, `Error: ${err.message.slice(0, 100)}`);
             }
         }
     });
 
-    i.logger.info(`[OllamaAddon] Ready! Only ${OLLAMA_CONFIG.allowedUser} can talk to me.`);
+    i.logger.info(`[OllamaAddon] Ready! Allowed users: ${allowedUsers.join(', ')}`);
 }
